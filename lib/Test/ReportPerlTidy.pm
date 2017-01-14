@@ -60,6 +60,7 @@ sub process_file {
     return \%status if $status{skipped};
 
     $status{perl} = $file =~ /(^[^.]|\.(pl|PL|pm|t))$/;
+    $status{perl} ||= ( $file =~ /\\[^.]+$/ and $file->getline =~ /^#!.*perl.*$/ );
     $status{excluded} = ( $exclude_filter and $exclude_filter->( $file ) );
     return \%status if $status{excluded} or !$status{perl};
 
