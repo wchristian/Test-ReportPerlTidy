@@ -10,6 +10,6 @@ done_testing;
 exit;
 
 sub run {
-
+    Test::ReportPerlTidy::run( sub { shift =~ /^Makefile\.PL$/ } );
     return;
 }
