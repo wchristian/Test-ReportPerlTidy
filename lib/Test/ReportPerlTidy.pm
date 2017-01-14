@@ -56,7 +56,7 @@ sub process_file {
     my ( $file, $exclude_filter ) = @_;
 
     my %status;
-    $status{skipped} = $file =~ /(\bblib\b|^\.git)/;
+    $status{skipped} = $file =~ /(\bblib\b|(^|\\)\.git)/;
     return \%status if $status{skipped};
 
     $status{perl} = $file =~ /(^[^.]|\.(pl|PL|pm|t))$/;
