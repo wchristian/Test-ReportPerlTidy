@@ -66,6 +66,7 @@ sub process_file {
 
     my $source = $file->all;
     my $tidy   = transform_source( $source );
+    pass if $ENV{HARNESS_ACTIVE} and not $ENV{HARNESS_IS_VERBOSE};    # provide progress feedback in prove
     return \%status if $source eq $tidy;
 
     return ( \%status, " !!! not tidy" ) if !require Text::Diff;
