@@ -37,7 +37,12 @@ sub report_untidied_files {
     my @files    = io( "." )->All_Files;
     my @statuses = map pre_check_files( $_, $exclude_filter ), @files;
     my $untidy   = 0;
-    for my $status ( ( grep $_->{excluded}, @statuses ), ( grep !$_->{excluded}, @statuses ) ) {
+    for my $status (
+        ( grep $_->{excluded} && !$_->{perl}, @statuses ),
+        ( grep $_->{excluded} && $_->{perl}, @statuses ),
+        ( grep !$_->{excluded}, @statuses )
+      )
+    {
         next if $status->{skipped};
         my $diff = diff_file( $status );
         note sprintf " %s%s | $status->{file}%s",    #
