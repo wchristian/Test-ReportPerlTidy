@@ -34,14 +34,15 @@ sub run {
 sub report_untidied_files {
     my ( $exclude_filter ) = @_;
 
-    my @files  = io( "." )->All_Files;
-    my $untidy = 0;
-    for my $file ( @files ) {
-        my ( $status, $diff ) = process_file( $file, $exclude_filter );
+    my @files    = io( "." )->All_Files;
+    my @statuses = map pre_check_files( $_, $exclude_filter ), @files;
+    my $untidy   = 0;
+    for my $status ( ( grep $_->{excluded}, @statuses ), ( grep !$_->{excluded}, @statuses ) ) {
         next if $status->{skipped};
-        note sprintf " %s%s | $file%s",    #
-          $status->{perl}     ? "p"       : " ",    #
-          $status->{excluded} ? "e"       : " ",    #
+        my $diff = diff_file( $status );
+        note sprintf " %s%s | $status->{file}%s",    #
+          $status->{perl}     ? "p"       : " ",     #
+          $status->{excluded} ? "e"       : " ",     #
           $diff               ? "\n$diff" : "";
         $untidy++ if $diff;
     }
@@ -52,30 +53,37 @@ sub report_untidied_files {
     return;
 }
 
-sub process_file {
+sub pre_check_files {
     my ( $file, $exclude_filter ) = @_;
 
-    my %status;
+    my %status = ( file => $file );
     $status{skipped} = $file =~ /(\bblib\b|(^|\\)\.git)/;
     return \%status if $status{skipped};
 
     $status{perl} = $file =~ /(^[^.]|\.(pl|PL|pm|t))$/;
     $status{perl} ||= ( $file =~ /\\[^.]+$/ and $file->getline =~ /^#!.*perl.*$/ );
-    $status{excluded} = ( $exclude_filter and $exclude_filter->( $file ) );
-    return \%status if $status{excluded} or !$status{perl};
 
-    my $source = $file->all;
+    $status{excluded} = ( $exclude_filter and $exclude_filter->( $file ) );
+
+    return \%status;
+}
+
+sub diff_file {
+    my ( $status ) = @_;
+    return if $status->{excluded} or not $status->{perl};
+
+    my $source = $status->{file}->all;
     my $tidy   = transform_source( $source );
     pass if $ENV{HARNESS_ACTIVE} and not $ENV{HARNESS_IS_VERBOSE};    # provide progress feedback in prove
-    return \%status if $source eq $tidy;
+    return if $source eq $tidy;
 
-    return ( \%status, " !!! not tidy" ) if !require Text::Diff;
+    return " !!! not tidy" if !require Text::Diff;
 
     my $diff = Text::Diff::diff( \$source, \$tidy, { STYLE => 'Unified', CONTEXT => 0 } );
     my @diff = split /\n/, $diff;
     @diff = ( @diff[ 0 .. 19 ], "[... snip ...]" ) if @diff > 20;
     $diff = join "\n", ( "-" x 78 ), @diff, ( "-" x 78 );
-    return ( \%status, $diff );
+    return $diff;
 }
 
 # from Code::TidyAll::Plugin::PerlTidy
